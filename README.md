@@ -9,6 +9,7 @@
 
 #使用脚本爬取街景需要安装一些库：geopandas、requests；使用命令行下载方法：
 pip install -i https://pypi.tuna.tsinghua.edu.cn/simple geopandas 
+
 pip install requests
 
 
