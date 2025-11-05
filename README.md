@@ -8,9 +8,11 @@
 3、设置.Shp文件路径，输出路径，运行Collect_Baidu_SVs.py代码获取街景
 
 #使用脚本爬取街景需要安装一些库：geopandas、requests；使用命令行下载方法：
+
 pip install -i https://pypi.tuna.tsinghua.edu.cn/simple geopandas 
 
 pip install requests
 
+详细可阅读“OSM数据处理.docx”、“爬取街景.docx”
 
                                                                                                         ZY
