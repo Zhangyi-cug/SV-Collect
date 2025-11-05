@@ -1,0 +1,19 @@
+# 百度街景获取
+
+使用本项目可以根据.shp文件经纬度获取相对应位置的百度街景图象
+
+步骤：
+1、OSM道路处理，从OSM网站(https://www.openstreetmap.org/)免费下载研究区域的道路数据，通过ArcGIS、QGIS等软件处理数据得到包含经纬度的.shp文件
+2、在百度地图开放平台（https://lbsyun.baidu.com/）申请坐标转换API Key（AK），获取由数字和字母组成的代码。
+3、设置.Shp文件路径，输出路径，运行Collect_Baidu_SVs.py代码获取街景
+
+#使用脚本爬取街景需要安装一些库：geopandas、requests；使用命令行下载方法：
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple geopandas 
+pip install requests
+
+
+
+
+
+                                                                                                      日期：2024.3.11  ZY
+                                                                                                      
