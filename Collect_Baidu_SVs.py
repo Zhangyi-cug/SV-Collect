@@ -54,7 +54,7 @@ class scrap_baidu_v2:
             count = count + 1
             while flag:
                 try:
-                    url = 'http://api.map.baidu.com/geoconv/v1/?coords={},{}&from=1&to=6&ak=Y5nQydd4MdijSWsFSXVONDZAleIGlDfZ'.format(
+                    url = 'http://api.map.baidu.com/geoconv/v1/?coords={},{}&from=1&to=6&ak=5YliFO5KYXvlkCaaIht8E2Ket5XosUgn'.format(
                         x, y)
                     r = requests.get(url, headers=self.header, verify=False)
                     html = r.text
@@ -151,3 +151,4 @@ if __name__ == '__main__':
         sb.save_data(loc, pointID, L, 'L')
         sb.save_data(loc, pointID, B, 'B')
         sb.save_data(loc, pointID, R, 'R')
+
