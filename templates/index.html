@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SV_collect — 百度街景采集工具</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft YaHei",Arial,sans-serif;font-size:14px;background:#f0f2f5;color:#333}
+header{background:#1a6fc4;color:#fff;padding:12px 20px;font-size:16px;font-weight:bold;letter-spacing:1px}
+.tabs{display:flex;background:#fff;border-bottom:2px solid #1a6fc4;padding:0 20px}
+.tab{padding:10px 20px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s}
+.tab:hover{color:#1a6fc4}
+.tab.active{color:#1a6fc4;border-bottom-color:#1a6fc4;font-weight:bold}
+.panels{padding:20px;max-width:900px;margin:0 auto}
+.panel{display:none}.panel.active{display:block}
+.card{background:#fff;border-radius:6px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.card h3{font-size:14px;color:#555;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #eee}
+.form-row{display:flex;align-items:center;margin-bottom:12px;gap:8px}
+.form-row label{width:110px;flex-shrink:0;color:#555}
+.form-row input[type=text],.form-row input[type=number],.form-row select{
+  flex:1;padding:6px 10px;border:1px solid #d9d9d9;border-radius:4px;outline:none;font-size:13px}
+.form-row input:focus,.form-row select:focus{border-color:#1a6fc4}
+.form-row .path-btn{padding:6px 12px;background:#f5f5f5;border:1px solid #d9d9d9;border-radius:4px;cursor:pointer;white-space:nowrap}
+.form-row .path-btn:hover{background:#e8e8e8}
+.checks{display:flex;gap:16px;flex-wrap:wrap}
+.checks label{display:flex;align-items:center;gap:4px;cursor:pointer}
+.btn{padding:8px 20px;border:none;border-radius:4px;cursor:pointer;font-size:14px;transition:background .2s}
+.btn-primary{background:#1a6fc4;color:#fff}.btn-primary:hover{background:#155fa0}
+.btn-danger{background:#e74c3c;color:#fff}.btn-danger:hover{background:#c0392b}
+.btn-secondary{background:#f5f5f5;border:1px solid #d9d9d9}.btn-secondary:hover{background:#e8e8e8}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.progress-wrap{margin:12px 0}
+.progress-bar-bg{background:#e8e8e8;border-radius:4px;height:18px;overflow:hidden}
+.progress-bar{background:#1a6fc4;height:100%;width:0;transition:width .3s;border-radius:4px}
+.progress-text{font-size:12px;color:#888;margin-top:4px}
+.log-box{background:#1e1e1e;color:#d4d4d4;font-family:Consolas,monospace;font-size:12px;
+  padding:10px;border-radius:4px;height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+.api-key-list{margin-top:8px}
+.api-key-item{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #f0f0f0}
+.api-key-item span{flex:1;font-size:12px;color:#555;word-break:break-all}
+.api-key-item button{padding:2px 8px;font-size:12px;background:#fff;border:1px solid #e74c3c;color:#e74c3c;border-radius:3px;cursor:pointer}
+.api-key-item button:hover{background:#e74c3c;color:#fff}
+.tip{font-size:12px;color:#999;margin-top:4px}
+.img-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.img-grid img{width:160px;height:90px;object-fit:cover;border-radius:4px;cursor:pointer;border:2px solid transparent;transition:border-color .2s}
+.img-grid img:hover{border-color:#1a6fc4}
+.img-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:999;align-items:center;justify-content:center}
+.img-modal.open{display:flex}
+.img-modal img{max-width:90vw;max-height:90vh;border-radius:4px}
+.img-modal .close{position:absolute;top:16px;right:24px;color:#fff;font-size:28px;cursor:pointer}
+.upload-area{border:2px dashed #d9d9d9;border-radius:4px;padding:20px;text-align:center;color:#aaa;cursor:pointer;transition:border-color .2s}
+.upload-area:hover,.upload-area.drag{border-color:#1a6fc4;color:#1a6fc4}
+.upload-area input{display:none}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;background:#e6f0fb;color:#1a6fc4;margin:2px}
+</style>
+</head>
+<body>
+<header>SV_collect &nbsp;·&nbsp; 百度街景批量采集工具</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(0)">街景下载</div>
+  <div class="tab" onclick="switchTab(1)">道路方向计算</div>
+  <div class="tab" onclick="switchTab(2)">获取情况统计</div>
+  <div class="tab" onclick="switchTab(3)">图像预览</div>
+</div>
+
+<div class="panels">
+
+<!-- ===== TAB 0: 街景下载 ===== -->
+<div class="panel active" id="panel-0">
+
+  <div class="card">
+    <h3>坐标文件 &amp; 输出路径</h3>
+    <div class="form-row">
+      <label>坐标 CSV：</label>
+      <input type="text" id="csv-path" placeholder="选择坐标 CSV 文件路径">
+      <button class="path-btn" onclick="pickPath('csv-path','csv')">选择</button>
+    </div>
+    <p class="tip" style="margin-left:118px">CSV 需包含列：pointID, lng, lat, direction（WGS84 经纬度）
+      &nbsp;<a href="#" onclick="downloadTemplate();return false">下载模板</a></p>
+    <div class="form-row" style="margin-top:10px">
+      <label>输出文件夹：</label>
+      <input type="text" id="save-path" placeholder="选择图片保存文件夹">
+      <button class="path-btn" onclick="pickPath('save-path','dir')">选择</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>API Key 管理</h3>
+    <div class="form-row">
+      <label>添加 Key：</label>
+      <input type="text" id="new-api-key" placeholder="输入百度地图 API Key">
+      <button class="btn btn-secondary" onclick="addApiKey()">添加</button>
+    </div>
+    <div class="api-key-list" id="api-key-list"></div>
+  </div>
+
+  <div class="card">
+    <h3>采集参数</h3>
+    <div class="form-row">
+      <label>焦距 fovy：</label>
+      <input type="number" id="fovy" min="0" max="100" value="85">
+    </div>
+    <div class="form-row">
+      <label>图像质量：</label>
+      <input type="number" id="quality" min="0" max="100" value="100">
+    </div>
+    <div class="form-row">
+      <label>俯仰角 pitch：</label>
+      <input type="number" id="pitch" min="0" max="100" value="0">
+    </div>
+    <div class="form-row">
+      <label>宽度：</label>
+      <input type="number" id="width" min="1" max="1024" value="800">
+    </div>
+    <div class="form-row">
+      <label>高度：</label>
+      <input type="number" id="height" min="1" max="1024" value="400">
+    </div>
+    <div class="form-row">
+      <label>年份选项：</label>
+      <select id="year-option" onchange="toggleYearInput()">
+        <option value="0">所有年份</option>
+        <option value="1">最新年份</option>
+        <option value="2">指定年份</option>
+      </select>
+    </div>
+    <div class="form-row" id="year-input-row" style="display:none">
+      <label>指定年份：</label>
+      <input type="text" id="selected-years" placeholder="如：2015,2018,2020">
+    </div>
+    <div class="form-row">
+      <label>采集方向：</label>
+      <div class="checks">
+        <label><input type="checkbox" id="dir-F" checked> 前视(F)</label>
+        <label><input type="checkbox" id="dir-L" checked> 左视(L)</label>
+        <label><input type="checkbox" id="dir-B" checked> 后视(B)</label>
+        <label><input type="checkbox" id="dir-R" checked> 右视(R)</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>执行</h3>
+    <div style="display:flex;gap:10px;margin-bottom:14px">
+      <button class="btn btn-primary" id="btn-start" onclick="startDownload()">开始采集</button>
+      <button class="btn btn-danger" id="btn-stop" onclick="stopDownload()" disabled>停止</button>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar-bg"><div class="progress-bar" id="progress-bar"></div></div>
+      <div class="progress-text" id="progress-text">等待开始...</div>
+    </div>
+    <div class="log-box" id="log-box"></div>
+  </div>
+</div>
+
+<!-- ===== TAB 1: 道路方向计算 ===== -->
+<div class="panel" id="panel-1">
+  <div class="card">
+    <h3>上传 Shapefile（线要素）</h3>
+    <p class="tip" style="margin-bottom:12px">请同时选择 .shp / .shx / .dbf 文件（.prj 可选），程序将计算每条线的起终点方向角并添加 DIREC 字段，结果以 zip 下载。</p>
+    <div class="upload-area" id="shp-drop" onclick="document.getElementById('shp-files').click()"
+         ondragover="event.preventDefault();this.classList.add('drag')"
+         ondragleave="this.classList.remove('drag')"
+         ondrop="handleShpDrop(event)">
+      <input type="file" id="shp-files" multiple accept=".shp,.shx,.dbf,.prj,.cpg" onchange="handleShpSelect(this.files)">
+      点击或拖拽上传 Shapefile 组件文件
+    </div>
+    <div id="shp-file-tags" style="margin-top:8px"></div>
+    <div style="margin-top:14px">
+      <button class="btn btn-primary" id="btn-calc" onclick="calcDirection()" disabled>计算并下载结果</button>
+    </div>
+    <div class="log-box" id="road-log" style="margin-top:12px;height:80px"></div>
+  </div>
+</div>
+
+<!-- ===== TAB 2: 统计 ===== -->
+<div class="panel" id="panel-2">
+  <div class="card">
+    <h3>生成覆盖情况统计 CSV</h3>
+    <div class="form-row">
+      <label>坐标 CSV：</label>
+      <input type="text" id="stat-csv" placeholder="坐标 CSV 文件路径">
+      <button class="path-btn" onclick="pickPath('stat-csv','csv')">选择</button>
+    </div>
+    <div class="form-row">
+      <label>图片文件夹：</label>
+      <input type="text" id="stat-folder" placeholder="已下载图片的文件夹路径">
+      <button class="path-btn" onclick="pickPath('stat-folder','dir')">选择</button>
+    </div>
+    <div style="margin-top:14px">
+      <button class="btn btn-primary" onclick="runStats()">生成统计并下载</button>
+    </div>
+    <div class="log-box" id="stat-log" style="margin-top:12px;height:60px"></div>
+  </div>
+</div>
+
+<!-- ===== TAB 3: 图像预览 ===== -->
+<div class="panel" id="panel-3">
+  <div class="card">
+    <h3>浏览已下载图片</h3>
+    <div class="form-row">
+      <label>图片文件夹：</label>
+      <input type="text" id="preview-folder" placeholder="图片文件夹路径">
+      <button class="path-btn" onclick="pickPath('preview-folder','dir')">选择</button>
+      <button class="btn btn-secondary" onclick="loadImages()">加载</button>
+    </div>
+    <div class="img-grid" id="img-grid"></div>
+  </div>
+</div>
+
+</div><!-- /panels -->
+
+<!-- Image modal -->
+<div class="img-modal" id="img-modal" onclick="closeModal()">
+  <span class="close">&times;</span>
+  <img id="modal-img" src="" alt="">
+</div>
+
+<script>
+// ---- Tab switching ----
+function switchTab(i){
+  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',i===j));
+  document.querySelectorAll('.panel').forEach((p,j)=>p.classList.toggle('active',i===j));
+}
+
+// ---- Config persistence ----
+let cfg = {};
+let configLoaded = false;  // guard: don't save before load completes
+
+async function loadConfig(){
+  try{
+    const r = await fetch('/api/config');
+    cfg = await r.json();
+    if(cfg.api_keys) cfg.api_keys.forEach(k=>renderApiKey(k));
+    const s = cfg.settings||{};
+    ['fovy','quality','pitch','width','height'].forEach(k=>{
+      if(s[k]!==undefined) document.getElementById(k).value=s[k];
+    });
+    if(cfg.year_option!==undefined){
+      document.getElementById('year-option').value=cfg.year_option;
+      toggleYearInput();
+    }
+    if(cfg.selected_years) document.getElementById('selected-years').value=cfg.selected_years;
+    if(cfg.directions){
+      ['F','L','B','R'].forEach(d=>document.getElementById('dir-'+d).checked=cfg.directions.includes(d));
+    }
+  }catch(e){}
+  configLoaded = true;
+}
+
+async function saveConfig(){
+  if(!configLoaded) return;  // don't overwrite config before it's loaded
+  const directions=['F','L','B','R'].filter(d=>document.getElementById('dir-'+d).checked);
+  const data={
+    api_keys: apiKeys,
+    settings:{
+      fovy:+document.getElementById('fovy').value,
+      quality:+document.getElementById('quality').value,
+      pitch:+document.getElementById('pitch').value,
+      width:+document.getElementById('width').value,
+      height:+document.getElementById('height').value,
+    },
+    year_option:+document.getElementById('year-option').value,
+    selected_years:document.getElementById('selected-years').value,
+    directions,
+  };
+  await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+}
+
+// Auto-save on any input change
+document.addEventListener('change', ()=>saveConfig());
+
+// ---- API Key management ----
+let apiKeys = [];
+function renderApiKey(key){
+  if(!apiKeys.includes(key)) apiKeys.push(key);
+  const list = document.getElementById('api-key-list');
+  const item = document.createElement('div');
+  item.className='api-key-item';
+  item.dataset.key=key;
+  item.innerHTML=`<span>${key}</span><button onclick="removeApiKey('${key}')">删除</button>`;
+  list.appendChild(item);
+}
+function addApiKey(){
+  const inp=document.getElementById('new-api-key');
+  const key=inp.value.trim();
+  if(!key||apiKeys.includes(key)) return;
+  renderApiKey(key);
+  inp.value='';
+  saveConfig();
+}
+function removeApiKey(key){
+  apiKeys=apiKeys.filter(k=>k!==key);
+  const item=document.querySelector(`.api-key-item[data-key="${key}"]`);
+  if(item) item.remove();
+  saveConfig();
+}
+
+// ---- Year input toggle ----
+function toggleYearInput(){
+  const v=document.getElementById('year-option').value;
+  document.getElementById('year-input-row').style.display=v==='2'?'flex':'none';
+}
+
+// ---- Path picker — calls backend to open system dialog via tkinter ----
+async function pickPath(inputId, mode){
+  try{
+    const r = await fetch('/api/pick_path?mode='+mode);
+    const data = await r.json();
+    if(data.path) document.getElementById(inputId).value = data.path;
+  }catch(e){
+    alert('无法打开文件选择框，请手动粘贴路径');
+  }
+}
+
+// ---- CSV template download ----
+function downloadTemplate(){
+  const csv='pointID,lng,lat,direction\n6443,116.3974,39.9093,45.0\n6468,116.4012,39.9105,90.0\n';
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='坐标模板.csv';
+  a.click();
+}
+
+// ---- Download task ----
+let currentTaskId = null;
+let evtSource = null;
+
+function startDownload(){
+  const csvPath=document.getElementById('csv-path').value.trim();
+  const savePath=document.getElementById('save-path').value.trim();
+  if(!csvPath||!savePath){alert('请填写坐标 CSV 路径和输出文件夹路径');return;}
+  if(!apiKeys.length){alert('请至少添加一个 API Key');return;}
+  const directions=['F','L','B','R'].filter(d=>document.getElementById('dir-'+d).checked);
+  if(!directions.length){alert('请至少选择一个采集方向');return;}
+
+  const yearOption=+document.getElementById('year-option').value;
+  const selectedYears=document.getElementById('selected-years').value
+    .split(',').map(s=>+s.trim()).filter(Boolean);
+
+  const params={
+    csv_path:csvPath, save_path:savePath, api_keys:apiKeys,
+    settings:{
+      fovy:+document.getElementById('fovy').value,
+      quality:+document.getElementById('quality').value,
+      pitch:+document.getElementById('pitch').value,
+      width:+document.getElementById('width').value,
+      height:+document.getElementById('height').value,
+    },
+    year_option:yearOption, selected_years:selectedYears, directions,
+  };
+
+  document.getElementById('btn-start').disabled=true;
+  document.getElementById('btn-stop').disabled=false;
+  document.getElementById('log-box').textContent='';
+  setProgress(0,0);
+
+  fetch('/api/download/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)})
+    .then(r=>r.json()).then(data=>{
+      if(data.error){alert(data.error);resetDownloadUI();return;}
+      currentTaskId=data.task_id;
+      evtSource=new EventSource('/api/download/stream?task_id='+currentTaskId);
+      evtSource.onmessage=e=>{
+        if(e.data==='__DONE__'){evtSource.close();resetDownloadUI();return;}
+        try{
+          const msg=JSON.parse(e.data);
+          if(msg.type==='log') appendLog(msg.text);
+          else if(msg.type==='progress') setProgress(msg.done,msg.total);
+        }catch(_){}
+      };
+      evtSource.onerror=()=>{evtSource.close();resetDownloadUI();};
+    }).catch(e=>{alert('启动失败: '+e);resetDownloadUI();});
+}
+
+function stopDownload(){
+  if(!currentTaskId) return;
+  fetch('/api/download/stop',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({task_id:currentTaskId})});
+  if(evtSource) evtSource.close();
+  resetDownloadUI();
+  appendLog('已手动停止。');
+}
+
+function resetDownloadUI(){
+  document.getElementById('btn-start').disabled=false;
+  document.getElementById('btn-stop').disabled=true;
+  currentTaskId=null;
+}
+
+function setProgress(done,total){
+  const pct=total>0?Math.round(done/total*100):0;
+  document.getElementById('progress-bar').style.width=pct+'%';
+  document.getElementById('progress-text').textContent=
+    total>0?`${done} / ${total} 个点位 (${pct}%)`:'等待开始...';
+}
+
+function appendLog(text){
+  const box=document.getElementById('log-box');
+  box.textContent+=text+'\n';
+  box.scrollTop=box.scrollHeight;
+}
+
+// ---- Road direction ----
+let shpFiles = {};
+function handleShpSelect(files){
+  Array.from(files).forEach(f=>{
+    const ext=f.name.split('.').pop().toLowerCase();
+    shpFiles[ext]=f;
+  });
+  renderShpTags();
+}
+function handleShpDrop(e){
+  e.preventDefault();
+  document.getElementById('shp-drop').classList.remove('drag');
+  handleShpSelect(e.dataTransfer.files);
+}
+function renderShpTags(){
+  const div=document.getElementById('shp-file-tags');
+  div.innerHTML=Object.keys(shpFiles).map(ext=>`<span class="tag">.${ext}</span>`).join('');
+  document.getElementById('btn-calc').disabled=!shpFiles['shp'];
+}
+async function calcDirection(){
+  if(!shpFiles['shp']){alert('请上传 .shp 文件');return;}
+  const btn=document.getElementById('btn-calc');
+  btn.disabled=true;btn.textContent='计算中...';
+  const log=document.getElementById('road-log');
+  log.textContent='正在上传并计算...\n';
+
+  const fd=new FormData();
+  Object.entries(shpFiles).forEach(([ext,f])=>fd.append(ext,f));
+
+  try{
+    const r=await fetch('/api/road_direction',{method:'POST',body:fd});
+    if(!r.ok){const e=await r.json();log.textContent+='错误: '+e.error;return;}
+    const blob=await r.blob();
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='road_direction_result.zip';
+    a.click();
+    log.textContent+='完成！结果已下载。\n';
+    shpFiles={};renderShpTags();
+  }catch(e){log.textContent+='请求失败: '+e;}
+  finally{btn.disabled=false;btn.textContent='计算并下载结果';}
+}
+
+// ---- Statistics ----
+async function runStats(){
+  const csvPath=document.getElementById('stat-csv').value.trim();
+  const folder=document.getElementById('stat-folder').value.trim();
+  const log=document.getElementById('stat-log');
+  if(!csvPath||!folder){alert('请填写坐标 CSV 路径和图片文件夹路径');return;}
+  log.textContent='正在生成统计...\n';
+  try{
+    const r=await fetch('/api/statistics',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({csv_path:csvPath,images_folder:folder})});
+    if(!r.ok){const e=await r.json();log.textContent+='错误: '+e.error;return;}
+    const blob=await r.blob();
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='statistics.csv';
+    a.click();
+    log.textContent+='完成！统计 CSV 已下载。\n';
+  }catch(e){log.textContent+='请求失败: '+e;}
+}
+
+// ---- Image preview ----
+async function loadImages(){
+  const folder=document.getElementById('preview-folder').value.trim();
+  if(!folder){alert('请填写图片文件夹路径');return;}
+  const r=await fetch('/api/images/list?folder='+encodeURIComponent(folder));
+  const data=await r.json();
+  if(data.error){alert(data.error);return;}
+  const grid=document.getElementById('img-grid');
+  grid.innerHTML='';
+  data.files.forEach(name=>{
+    const path=folder.replace(/\\/g,'/')+'/'+name;
+    const img=document.createElement('img');
+    img.src='/api/images/file?path='+encodeURIComponent(folder+'\\'+name);
+    img.title=name;
+    img.onclick=()=>openModal(img.src);
+    grid.appendChild(img);
+  });
+  if(!data.files.length) grid.innerHTML='<p style="color:#aaa">该文件夹中没有图片</p>';
+}
+function openModal(src){
+  document.getElementById('modal-img').src=src;
+  document.getElementById('img-modal').classList.add('open');
+}
+function closeModal(){document.getElementById('img-modal').classList.remove('open');}
+
+// ---- Init ----
+loadConfig();
+</script>
+</body>
+</html>

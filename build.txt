@@ -1,0 +1,9 @@
+# 安装依赖
+pip install flask requests pyshp
+
+# 开发运行
+python app.py
+
+# 打包为单文件 exe（需要先 pip install pyinstaller）
+pyinstaller --onefile --noconsole --add-data "templates;templates" --hidden-import shapefile app.py
+# 生成文件在 dist/app.exe
